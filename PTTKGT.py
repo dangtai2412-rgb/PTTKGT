@@ -75,3 +75,87 @@ class MinHeap:
         self.heapify_down(0)
         
         return min_node
+
+class HuffmanEncoder:
+    def __init__(self):
+        self.root = None
+        self.codes = {}       # Bảng mã: ký tự -> chuỗi bit
+        self.freq_table = {}  # Bảng tần suất: ký tự -> số lần xuất hiện
+
+    # ----- Đọc file & thống kê tần suất -----
+    def read_file(self, file_path):
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+
+    def calculate_frequency(self, text):
+        freq = {}
+        for char in text:
+            freq[char] = freq.get(char, 0) + 1
+        return freq
+
+    # ----- Xây dựng cây Huffman -----
+    def build_tree(self, text):
+        self.freq_table = self.calculate_frequency(text)
+
+        heap = MinHeap()
+        for char, freq in self.freq_table.items():
+            heap.insert(HuffmanNode(char, freq))
+
+        # Trường hợp đặc biệt: văn bản chỉ có 1 loại ký tự (VD: "AAAAAA")
+        # -> phải tạo thêm 1 nút cha giả để cây có ít nhất 1 cạnh,
+        #    nếu không mã sinh ra sẽ rỗng ("").
+        if heap.get_size() == 1:
+            only_node = heap.extract_min()
+            parent = HuffmanNode(None, only_node.freq)
+            parent.left = only_node
+            self.root = parent
+            return self.root
+
+        # Thuật toán tham lam: lặp lại việc lấy 2 node tần suất nhỏ nhất,
+        # gộp thành 1 node cha, đưa lại vào heap, cho đến khi chỉ còn gốc.
+        while heap.get_size() > 1:
+            left = heap.extract_min()
+            right = heap.extract_min()
+            parent = HuffmanNode(None, left.freq + right.freq)
+            parent.left = left
+            parent.right = right
+            heap.insert(parent)
+
+        self.root = heap.extract_min()
+        return self.root
+
+    # ----- Sinh bảng mã bit (duyệt cây, trái = 0, phải = 1) -----
+    def generate_codes(self):
+        self.codes = {}
+        if self.root is None:
+            return self.codes
+        self._generate_codes_recursive(self.root, "")
+        return self.codes
+
+    def _generate_codes_recursive(self, node, current_code):
+        if node is None:
+            return
+        if node.char is not None:  # gặp nút lá -> lưu mã
+            # Trường hợp cây chỉ có 1 ký tự, current_code sẽ là "" -> gán "0"
+            self.codes[node.char] = current_code if current_code != "" else "0"
+            return
+        self._generate_codes_recursive(node.left, current_code + "0")
+        self._generate_codes_recursive(node.right, current_code + "1")
+
+    # ----- Chuyển văn bản thành chuỗi bit dựa trên bảng mã -----
+
+    def encode_text(self, text):
+        if not self.codes:
+            self.generate_codes()
+        encoded_bits = "".join(self.codes[char] for char in text)
+        return encoded_bits
+
+if __name__ == "__main__":
+    # Test thử của Tâm
+    text_mau = "AABCB"
+    encoder = HuffmanEncoder()
+    encoder.build_tree(text_mau)
+    encoder.generate_codes()
+
+    print("Bảng mã của Lộc sinh ra:", encoder.codes)
+    print("Chuỗi nén:", encoder.encode_text(text_mau))
