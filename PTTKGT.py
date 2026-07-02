@@ -75,3 +75,106 @@ class MinHeap:
         self.heapify_down(0)
         
         return min_node
+
+# ... (Giữ nguyên code class HuffmanNode và MinHeap của bạn ở trên) ...
+
+class HuffmanEncoder:
+    def __init__(self):
+        self.root = None
+        self.codes = {}             # Lưu bảng mã (VD: {'a': '100', 'e': '01'})
+        self.reverse_mapping = {}   # Lưu bảng ngược để Phát dùng cho giải mã (VD: {'100': 'a'})
+
+    # 1. Thống kê tần suất xuất hiện của các ký tự trong văn bản
+    def make_frequency_dict(self, text):
+        freq_dict = {}
+        for character in text:
+            if character not in freq_dict:
+                freq_dict[character] = 0
+            freq_dict[character] += 1
+        return freq_dict
+
+    # 2. Xây dựng cây Huffman
+    def build_tree(self, text):
+        freq_dict = self.make_frequency_dict(text)
+        min_heap = MinHeap()
+        
+        # Bước 2.1: Khởi tạo các nút lá và đưa vào Min Heap
+        for key, freq in freq_dict.items():
+            node = HuffmanNode(key, freq)
+            min_heap.insert(node)
+            
+        # Bước 2.2: Lặp cho đến khi chỉ còn 1 nút duy nhất (Gốc của cây)
+        while min_heap.get_size() > 1:
+            # Lấy 2 nút có tần suất nhỏ nhất ra khỏi heap
+            node1 = min_heap.extract_min()
+            node2 = min_heap.extract_min()
+            
+            # Tạo nút cha với tần suất bằng tổng 2 nút con. 
+            # Nút trong (Internal node) không lưu ký tự nên để None.
+            merged_freq = node1.freq + node2.freq
+            merged_node = HuffmanNode(None, merged_freq)
+            merged_node.left = node1
+            merged_node.right = node2
+            
+            # Đưa nút cha ngược lại vào heap
+            min_heap.insert(merged_node)
+            
+        # Nút cuối cùng còn lại chính là gốc của cây
+        self.root = min_heap.extract_min()
+
+    # 3. Hàm đệ quy duyệt cây để tạo mã bit (Trái = 0, Phải = 1)
+    def make_codes_helper(self, node, current_code):
+        if node is None:
+            return
+        
+        # Nếu chạm đến nút lá (có chứa ký tự), lưu mã bit vào từ điển
+        if node.char is not None:
+            self.codes[node.char] = current_code
+            self.reverse_mapping[current_code] = node.char
+            return
+            
+        # Duyệt tiếp xuống nhánh trái (thêm '0') và phải (thêm '1')
+        self.make_codes_helper(node.left, current_code + "0")
+        self.make_codes_helper(node.right, current_code + "1")
+
+    # Hàm mồi để gọi quá trình đệ quy sinh mã từ Root
+    def generate_codes(self):
+        current_code = ""
+        self.make_codes_helper(self.root, current_code)
+
+    # 4. Mã hóa văn bản gốc thành chuỗi bit nhị phân
+    def encode_text(self, text):
+        encoded_text = ""
+        for character in text:
+            encoded_text += self.codes[character]
+        return encoded_text
+
+
+# ==========================================
+# TEST CHẠY THỬ (Dành cho Tâm kiểm tra code)
+# ==========================================
+if __name__ == "__main__":
+    # Đoạn text giả định để test
+    text_mau = "A_DEAD_DAD_CEDED_A_BAD_BABE_A_BEADED_ABACA_BED"
+    print(f"Văn bản gốc: {text_mau}\n")
+
+    # Khởi tạo bộ mã hóa
+    encoder = HuffmanEncoder()
+    
+    # Thực thi các bước
+    encoder.build_tree(text_mau)
+    encoder.generate_codes()
+    chuoi_da_nen = encoder.encode_text(text_mau)
+    
+    # In kết quả
+    print("1. Bảng mã Huffman được sinh ra:")
+    for char, code in encoder.codes.items():
+        print(f"   '{char}': {code}")
+        
+    print(f"\n2. Chuỗi bit sau khi nén:\n{chuoi_da_nen}")
+    
+    # So sánh độ dài
+    so_bit_goc = len(text_mau) * 8 # Giả sử dùng ASCII 8-bit
+    so_bit_nen = len(chuoi_da_nen)
+    print(f"\n3. Dung lượng gốc: {so_bit_goc} bits")
+    print(f"   Dung lượng nén: {so_bit_nen} bits")
